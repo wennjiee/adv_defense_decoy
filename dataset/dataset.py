@@ -33,7 +33,7 @@ class ReadDataset():
         self.path = f'../_Datasets/{args.dataset}'
         self.root = self.path
         
-        if 'Celeb' in args.dataset:
+        if 'celeb' in args.dataset:
             self.init_celeb_df()
         elif 'cifar' in args.dataset:
             self.init_cifar_10()
@@ -41,16 +41,16 @@ class ReadDataset():
             self.init_waitan()
         elif 'deepfake' in args.dataset:
             self.init_deepfake_sets()
-        elif 'adv' in args.dataset:
-            self.init_adv_datasets()
-        else:
-            self.init_datasets()
-            # self.read_txt(oversample=oversample)
-        logging.info(f"fake train data: {sum(self.labels['train'])}, real train data: {len(self.labels['train']) - sum(self.labels['train'])}")
+        elif 'all' in args.dataset:
+            self.init_all_datasets()
+        
+        info = f"train data: {len(self.data['train'])}, test data: {len(self.data['test'])}"
+        logging.info(info)
+        print(info)
     
-    def init_adv_datasets(self):
-        real_list = glob('../_Datasets/adversary/attack-real/*') + glob('../_Datasets/adversary/ori-real/*')
-        fake_list = glob('../_Datasets/adversary/attack-fake/*') + glob('../_Datasets/adversary/ori-fake/*')
+    def init_all_datasets(self):
+        real_list = glob('D:/_Datasets/adv/race-real/*') + glob('D:/_Datasets/deepfake/real/real-race-processed-9845/*')
+        fake_list = glob('D:/_Datasets/adv/race-fake/*') + glob('D:/_Datasets/deepfake/fake/fake-race-9996/*')
 
         random.shuffle(real_list)
         random.shuffle(fake_list)
@@ -237,44 +237,6 @@ class ReadDataset():
         self.labels['val'] = val_label
         self.data['test'] = self.data['val']
         self.labels['test'] = self.labels['val']
-
-    def init_datasets(self):
-
-        real_list = glob('../_Datasets/realimages/*.png')
-        fake_list = glob('../_Datasets/fakeimages/*.png')
-        random.shuffle(real_list)
-        random.shuffle(fake_list)
-        real_tgt_list = [0] * len(real_list)
-        fake_tgt_list = [1] * len(fake_list)
-        print('real_imgs =', len(real_list))
-        print('fake_imgs =', len(fake_list))
-        ratio = 0.2
-        train_real_idx = int(ratio*len(real_list))
-        train_fake_idx = int(ratio*len(fake_list))
-        print(f'train_real_len = {train_real_idx}')
-        print(f'train_fake_len = {train_fake_idx}')
-        val_real_idx = int((len(real_list) - train_real_idx) / 2)
-        val_fake_idx = int((len(fake_list) - train_fake_idx) / 2)
-        
-        # train = 0.8 * all, val == test = 0.2 * all
-        self.data['train'] = real_list[0: train_real_idx] + fake_list[0: train_fake_idx]
-        self.data['val'] = real_list[train_real_idx:] + fake_list[train_fake_idx:]
-        self.data['test'] = self.data['val']
-                                      
-        self.labels['train'] = real_tgt_list[0: train_real_idx] + fake_tgt_list[0: train_fake_idx]
-        self.labels['val'] = real_tgt_list[train_real_idx:] + fake_tgt_list[train_fake_idx:]
-        self.labels['test'] = self.labels['val']
-        
-        # val: test = 1: 1
-        # self.data['train'] = real_list[0: train_real_idx] + fake_list[0: train_fake_idx]
-        # self.data['val'] = real_list[train_real_idx: train_real_idx + val_real_idx] + fake_list[train_fake_idx: train_fake_idx + val_fake_idx]
-        # self.data['test'] = real_list[train_real_idx + val_real_idx:] + fake_list[train_fake_idx + val_fake_idx:]
-
-        # self.labels['train'] = real_tgt_list[0: train_real_idx] + fake_tgt_list[0: train_fake_idx]
-        # self.labels['val'] = real_tgt_list[train_real_idx: train_real_idx + val_real_idx] + fake_tgt_list[train_fake_idx: train_fake_idx + val_fake_idx]
-        # self.labels['test'] = real_tgt_list[train_real_idx + val_real_idx:] + fake_tgt_list[train_fake_idx + val_fake_idx:]
-        
-        print("Data loaded.")
 
     def init_cifar_10(self):
         
