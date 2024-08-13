@@ -54,17 +54,18 @@ def main(args):
 
     logger.info("Best Epoch: %s, Best Val F1 %.4f." % (best_epoch, best_f1))
 
-    if args.deception:
-        test_f1_SP, test_acc_SP, test_auc_SP = evaluation(model, test_loader, "SP", args.input_size, device)
-        print(f"test_f1_SP = {test_f1_SP}, test_acc_SP = {test_acc_SP}, test_auc_SP = {test_auc_SP}")
-        test_f1_WSRT, test_acc_WSRT, test_auc_WSRT, _ = evaluation(model, test_loader, "WSRT", args.input_size, device)
-        print(f"test_f1_WSRT = {test_f1_WSRT}, test_acc_WSRT = {test_acc_WSRT}, test_auc_WSRT = {test_auc_WSRT}")
+    # Here, we annotate the following code due to the test_loader = val_loader
+    # if args.deception:
+    #     test_f1_SP, test_acc_SP, test_auc_SP = evaluation(model, test_loader, "SP", args.input_size, device)
+    #     print(f"test_f1_SP = {test_f1_SP}, test_acc_SP = {test_acc_SP}, test_auc_SP = {test_auc_SP}")
+    #     test_f1_WSRT, test_acc_WSRT, test_auc_WSRT, _ = evaluation(model, test_loader, "WSRT", args.input_size, device)
+    #     print(f"test_f1_WSRT = {test_f1_WSRT}, test_acc_WSRT = {test_acc_WSRT}, test_auc_WSRT = {test_auc_WSRT}")
 
-        logger.info("Testing: F1_WSRT %.4f, Acc_WSRT %.4f, AUC_WSRT %.4f, F1_SP %.4f, Acc_SP %.4f, AUC_SP %.4f." % (test_f1_WSRT, test_acc_WSRT, test_auc_WSRT, test_f1_SP, test_acc_SP, test_auc_SP))
-    else:
-        test_f1, test_acc, test_auc = evaluation(model, test_loader, "SP", args.input_size, device)
-        print(f"test_f1_SP = {test_f1}, test_acc_SP = {test_acc}, test_auc_SP = {test_auc}")
-        logger.info("Testing: F1 Score %.4f, Accuracy %.4f, AUC %.4f." % (test_f1, test_acc, test_auc))
+    #     logger.info("Testing: F1_WSRT %.4f, Acc_WSRT %.4f, AUC_WSRT %.4f, F1_SP %.4f, Acc_SP %.4f, AUC_SP %.4f." % (test_f1_WSRT, test_acc_WSRT, test_auc_WSRT, test_f1_SP, test_acc_SP, test_auc_SP))
+    # else:
+    #     test_f1, test_acc, test_auc = evaluation(model, test_loader, "SP", args.input_size, device)
+    #     print(f"test_f1_SP = {test_f1}, test_acc_SP = {test_acc}, test_auc_SP = {test_auc}")
+    #     logger.info("Testing: F1 Score %.4f, Accuracy %.4f, AUC %.4f." % (test_f1, test_acc, test_auc))
         
 
 if __name__ == "__main__":
@@ -74,43 +75,45 @@ if __name__ == "__main__":
 
     # CUDA_VISIBLE_DEVICES=-1 python3 -B train.py --model_name XDeception --train_video_batch 10 --train_img_batch 8 
     # --save_path ./weight/XDeception.pt --log_path ./log/XDeception.log --deception
+    model_name = 'Xception'
+    deception_flag = False if model_name == 'Xception' else True
     parser = argparse.ArgumentParser()
 
     # Training Setting
     # Dataset
-    parser.add_argument('--dataset', default="adv", type=str, help="dataset name")
+    parser.add_argument('--dataset', default="all", type=str, help="dataset name")
     parser.add_argument("--root_dir", type = str, default = "data/FF++/raw")
     parser.add_argument("--test_root_dir", type = str, default = "data/FF++/raw")
     parser.add_argument("--train_file_path", type = str, default = "./file/FF++_train.txt")
     parser.add_argument("--val_file_path", type = str, default = "./file/FF++_val.txt")
-    parser.add_argument("--train_video_batch", type = int, default = 10)
+    parser.add_argument("--train_video_batch", type = int, default = 16)
     parser.add_argument("--train_img_batch", type = int, default = 16)
     parser.add_argument("--val_img_batch", type = int, default = 16)
     parser.add_argument("--workers", type = int, default = 0)
+    
+    # Testing setting
+    parser.add_argument("--test_file_path", type = str, default = "./file/FF++_test.txt")
+    parser.add_argument("--test_img_batch", type = int, default = 16)
 
     # Optimizer and scheduler
     parser.add_argument("--lr", type = float, default = 0.001)
     parser.add_argument("--step_size", type = int, default = 30)
     parser.add_argument("--gamma", type = float, default = 0.1)
-    parser.add_argument("--epoch", type = int, default = 2)
+    parser.add_argument("--epoch", type = int, default = 1)
 
     # Model 
-    parser.set_defaults(deception=True)
+    parser.set_defaults(deception=deception_flag)
     parser.add_argument('--deception', dest='deception', action="store_true")
-    parser.add_argument("--model_name", type = str, default = "XDeception")
+    parser.add_argument("--model_name", type = str, default = f"{model_name}")
 
     # Save path
-    parser.add_argument("--log_path", type = str, default = "./log/XDeception.log")
-    parser.add_argument("--save_path", type = str, default = "./weight/XDeception.pt")
+    parser.add_argument("--log_path", type = str, default = f"./log/{model_name}.log")
+    parser.add_argument("--save_path", type = str, default = f"./weight/{model_name}.pt")
 
     # ADL and Margin loss
     parser.add_argument("--eta", type = float, default = 1.5)
     parser.add_argument("--margin", type = float, default = 0.8)
     parser.add_argument("--lamb", type = float, default = 1)
-
-    # Testing setting
-    parser.add_argument("--test_file_path", type = str, default = "./file/FF++_test.txt")
-    parser.add_argument("--test_img_batch", type = int, default = 10)
 
     args = parser.parse_args()
 
