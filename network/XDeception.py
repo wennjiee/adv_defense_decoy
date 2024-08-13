@@ -33,7 +33,7 @@ class Block(nn.Module):
         self.relu = nn.ReLU(inplace=False)
         rep=[]
 
-        filters=in_filters
+        filters = in_filters
         if grow_first:
             rep.append(self.relu)
             rep.append(SeparableConv2d(in_filters,out_filters,3,stride=1,padding=1,bias=False))
@@ -68,7 +68,7 @@ class Block(nn.Module):
         else:
             skip = inp
 
-        x+=skip
+        x += skip
         return x
 
 

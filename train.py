@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import StepLR
 import logging
 
-from dataset import get_loader
+from dataset import get_loader, get_dataloader
 from network import load_model
 from trainer import train, trainDeception
 from evaluation import evaluation
@@ -26,68 +26,82 @@ def main(args):
     device = torch.device('cuda')
     model.to(device)
 
-    train_data, val_data, test_data, train_loader, val_loader, test_loader = get_loader(args)
+    train_data, val_data, test_data, train_loader, val_loader, test_loader = get_dataloader(args)
+    # train_data, val_data, test_data, train_loader, val_loader, test_loader = get_loader(args)
+
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scheduler = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
 
-    # if args.deception:
-    #     model, best_epoch, best_f1 = trainDeception( model, 
-    #                                                 train_loader, 
-    #                                                 val_loader, 
-    #                                                 optimizer,
-    #                                                 scheduler, 
-    #                                                 device,
-    #                                                 logger, 
-    #                                                 args )
-    # else:
-    #     model, best_epoch, best_f1 = train( model, 
-    #                                         train_loader, 
-    #                                         val_loader, 
-    #                                         optimizer, 
-    #                                         scheduler, 
-    #                                         device,
-    #                                         logger,
-    #                                         args )
+    if args.deception:
+        model, best_epoch, best_f1 = trainDeception( model, 
+                                                    train_loader, 
+                                                    val_loader, 
+                                                    optimizer,
+                                                    scheduler, 
+                                                    device,
+                                                    logger, 
+                                                    args )
+    else:
+        model, best_epoch, best_f1 = train( model, 
+                                            train_loader, 
+                                            val_loader, 
+                                            optimizer, 
+                                            scheduler, 
+                                            device,
+                                            logger,
+                                            args )
 
-
-    # logger.info("Best Epoch: %s, Best Val F1 %.4f." % (best_epoch, best_f1))
+    logger.info("Best Epoch: %s, Best Val F1 %.4f." % (best_epoch, best_f1))
 
     if args.deception:
         test_f1_SP, test_acc_SP, test_auc_SP = evaluation(model, test_loader, "SP", args.input_size, device)
+        print(f"test_f1_SP = {test_f1_SP}, test_acc_SP = {test_acc_SP}, test_auc_SP = {test_auc_SP}")
         test_f1_WSRT, test_acc_WSRT, test_auc_WSRT, _ = evaluation(model, test_loader, "WSRT", args.input_size, device)
+        print(f"test_f1_WSRT = {test_f1_WSRT}, test_acc_WSRT = {test_acc_WSRT}, test_auc_WSRT = {test_auc_WSRT}")
 
         logger.info("Testing: F1_WSRT %.4f, Acc_WSRT %.4f, AUC_WSRT %.4f, F1_SP %.4f, Acc_SP %.4f, AUC_SP %.4f." % (test_f1_WSRT, test_acc_WSRT, test_auc_WSRT, test_f1_SP, test_acc_SP, test_auc_SP))
     else:
         test_f1, test_acc, test_auc = evaluation(model, test_loader, "SP", args.input_size, device)
+        print(f"test_f1_SP = {test_f1}, test_acc_SP = {test_acc}, test_auc_SP = {test_auc}")
         logger.info("Testing: F1 Score %.4f, Accuracy %.4f, AUC %.4f." % (test_f1, test_acc, test_auc))
         
 
 if __name__ == "__main__":
 
+    # CUDA_VISIBLE_DEVICES=-1 python3 -B train.py --model_name Xception --train_video_batch 10 
+    # --train_img_batch 8 --save_path ./weight/Xception.pt --log_path ./log/Xception.log
+
+    # CUDA_VISIBLE_DEVICES=-1 python3 -B train.py --model_name XDeception --train_video_batch 10 --train_img_batch 8 
+    # --save_path ./weight/XDeception.pt --log_path ./log/XDeception.log --deception
     parser = argparse.ArgumentParser()
 
     # Training Setting
     # Dataset
+    parser.add_argument('--dataset', default="adv", type=str, help="dataset name")
     parser.add_argument("--root_dir", type = str, default = "data/FF++/raw")
     parser.add_argument("--test_root_dir", type = str, default = "data/FF++/raw")
     parser.add_argument("--train_file_path", type = str, default = "./file/FF++_train.txt")
     parser.add_argument("--val_file_path", type = str, default = "./file/FF++_val.txt")
     parser.add_argument("--train_video_batch", type = int, default = 10)
-    parser.add_argument("--train_img_batch", type = int, default = 8)
-    parser.add_argument("--val_img_batch", type = int, default = 10)
-    parser.add_argument("--workers", type = int, default = 8)
+    parser.add_argument("--train_img_batch", type = int, default = 16)
+    parser.add_argument("--val_img_batch", type = int, default = 16)
+    parser.add_argument("--workers", type = int, default = 0)
 
     # Optimizer and scheduler
     parser.add_argument("--lr", type = float, default = 0.001)
     parser.add_argument("--step_size", type = int, default = 30)
     parser.add_argument("--gamma", type = float, default = 0.1)
-    parser.add_argument("--epoch", type = int, default = 100)
+    parser.add_argument("--epoch", type = int, default = 2)
 
     # Model 
-    parser.set_defaults(deception=False)
+    parser.set_defaults(deception=True)
     parser.add_argument('--deception', dest='deception', action="store_true")
-    parser.add_argument("--model_name", type = str, default = "Xception")
+    parser.add_argument("--model_name", type = str, default = "XDeception")
+
+    # Save path
+    parser.add_argument("--log_path", type = str, default = "./log/XDeception.log")
+    parser.add_argument("--save_path", type = str, default = "./weight/XDeception.pt")
 
     # ADL and Margin loss
     parser.add_argument("--eta", type = float, default = 1.5)
@@ -97,10 +111,6 @@ if __name__ == "__main__":
     # Testing setting
     parser.add_argument("--test_file_path", type = str, default = "./file/FF++_test.txt")
     parser.add_argument("--test_img_batch", type = int, default = 10)
-
-    # Save path
-    parser.add_argument("--log_path", type = str, default = "./log/Xception.log")
-    parser.add_argument("--save_path", type = str, default = "./weight/Xception.pt")
 
     args = parser.parse_args()
 

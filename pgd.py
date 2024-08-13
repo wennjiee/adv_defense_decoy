@@ -37,7 +37,8 @@ class PGD:
             images = torch.clamp(ori_images + eta, min=self.clamp_min, max=self.clamp_max).detach_()
                 
         return images
-
+    
+    # if black
     def nes_attack(self, model, images, labels):
 
         ori_images = images.clone()

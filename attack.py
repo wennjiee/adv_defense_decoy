@@ -75,6 +75,10 @@ def main(args):
 
 if __name__ == "__main__":
 
+    # CUDA_VISIBLE_DEVICES=-1 python3 -B attack.py --model_name XDeception 
+    # --pretrained_weight ./weight/XDeception.pt --test_clean --eps 0.005 --iters 5 
+    # --log_path ./log/FF++/raw/XDeception_attack.log --deception --test_root_dir ./data/FF++/raw 
+    # --test_file_path ./file/FF++_test10.txt
     parser = argparse.ArgumentParser()
 
     # Dataset
