@@ -59,7 +59,7 @@ def train(model, train_loader, val_loader, optimizer, scheduler, device, logger,
 
 def trainDeception(model, train_loader, val_loader, optimizer, scheduler, device, logger, args):
     
-    # setting distribution of real and fake scores 
+    # setting distribution of real and fake scores
     real_dis = torch.distributions.Normal(-1, 0.2)
     fake_dis = torch.distributions.Normal(1, 0.2)
     criterion =  nn.MSELoss()
@@ -71,7 +71,9 @@ def trainDeception(model, train_loader, val_loader, optimizer, scheduler, device
     dicts = {"adl":[], "margin":[], "auc_sp":[], "auc_wsrt":[], "dis":{}}
 
     for i in range(1, args.epoch + 1):
-    
+        # each epoch
+        info = '['+f"-"*15 + f"Starting Traing At Epoch {i}" + "-"*15+']'
+        print(info)
         model.train()
         loss_dict = {"adl":[], "margin":[]}
         pbar = tqdm(total = len(train_loader))
