@@ -3,7 +3,7 @@ import logging
 import torch
 import torch.nn as nn
 
-from dataset import get_loader
+from dataset import get_loader, get_dataloader
 from network import load_model
 from pgd import PGD
 from evaluation import evaluation, evaluation_PGD
@@ -13,7 +13,7 @@ def main(args):
 
     logger = logging.getLogger()
     logging.basicConfig(level=logging.INFO)
-    handler = logging.FileHandler(args.log_path, mode='a')
+    handler = logging.FileHandler(args.log_path, mode='w')
     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
     handler.setLevel(logging.INFO)
@@ -27,7 +27,8 @@ def main(args):
     model.to(device)
     args.input_size = input_size
 
-    train_data, val_data, test_data, train_loader, val_loader, test_loader = get_loader(args)
+    train_data, val_data, test_data, train_loader, val_loader, test_loader = get_dataloader(args)
+    # train_data, val_data, test_data, train_loader, val_loader, test_loader = get_loader(args)
 
     attacker = PGD(args.eps, args.alpha, args.iters, nes_batch = args.nes_batch, nes_iters = args.nes_iters)
 
@@ -74,39 +75,47 @@ def main(args):
 
 
 if __name__ == "__main__":
-
-    # CUDA_VISIBLE_DEVICES=-1 python3 -B attack.py --model_name XDeception 
-    # --pretrained_weight ./weight/XDeception.pt --test_clean --eps 0.005 --iters 5 
-    # --log_path ./log/FF++/raw/XDeception_attack.log --deception --test_root_dir ./data/FF++/raw 
-    # --test_file_path ./file/FF++_test10.txt
+    
+    # Evaluate the vanilla model under PGD attack:
+    # CUDA_VISIBLE_DEVICES=-1 python3 -B attack.py --model_name Xception --pretrained_weight ./weight/Xception.pt 
+    # --test_clean --eps 0.005 --iters 5 --log_path ./log/FF++/raw/Xception_attack.log 
+    # --test_root_dir ./data/FF++/raw --test_file_path ./file/FF++_test10.txt
+    
+    # Evaluate the deceptive model under PGD attack:
+    # CUDA_VISIBLE_DEVICES=-1 python3 -B attack.py --model_name XDeception --pretrained_weight ./weight/XDeception.pt 
+    # --test_clean --eps 0.005 --iters 5 --log_path ./log/FF++/raw/XDeception_attack.log 
+    # --deception --test_root_dir ./data/FF++/raw --test_file_path ./file/FF++_test10.txt
+    model_name = 'Xception'
+    deception_flag = False if model_name == 'Xception' else True
     parser = argparse.ArgumentParser()
 
     # Dataset
+    parser.add_argument('--dataset', default="all", type=str, help="dataset name")
     parser.add_argument("--root_dir", type = str, default = "data/FF++/raw/")
     parser.add_argument("--train_file_path", type = str, default = "./file/FF++_train.txt")
     parser.add_argument("--val_file_path", type = str, default = "./file/FF++_val.txt")
-    parser.add_argument("--train_video_batch", type = int, default = 10)
-    parser.add_argument("--train_img_batch", type = int, default = 8)
-    parser.add_argument("--val_img_batch", type = int, default = 10)
-    parser.add_argument("--workers", type = int, default = 8)
+    parser.add_argument("--train_video_batch", type = int, default = 16)
+    parser.add_argument("--train_img_batch", type = int, default = 16)
+    parser.add_argument("--val_img_batch", type = int, default = 16)
+    parser.add_argument("--workers", type = int, default = 0)
 
     # Model 
-    parser.set_defaults(deception=False)
+    parser.set_defaults(deception=deception_flag)
     parser.add_argument('--deception', dest='deception', action="store_true")
-    parser.add_argument("--model_name", type = str, default = "Xception")
-    parser.add_argument("--pretrained_weight", type = str, default = "./weight/Xception.pt")
+    parser.add_argument("--model_name", type = str, default = f"{model_name}")
+    parser.add_argument("--pretrained_weight", type = str, default = f"./weight/{model_name}.pt")
 
     # Testing setting
     parser.add_argument("--test_root_dir", type = str, default = "/ssd1/FF++/raw/")
     parser.add_argument("--test_file_path", type = str, default = "./file/FF++_test.txt")
-    parser.add_argument("--test_img_batch", type = int, default = 10)
-    parser.set_defaults(test_clean=False)
+    parser.add_argument("--test_img_batch", type = int, default = 16)
+    parser.set_defaults(test_clean=True)
     parser.add_argument('--test_clean', dest='test_clean', action="store_true")
     
     # PGD
-    parser.add_argument("--eps", type = float, default = 8/255)
+    parser.add_argument("--eps", type = float, default = 0.005) # default = 8/255
     parser.add_argument("--alpha", type = float, default = 1/255)
-    parser.add_argument("--iters", type = int, default = 10)
+    parser.add_argument("--iters", type = int, default = 5)
 
     # NES+PGD
     parser.set_defaults(black=False)
@@ -115,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument("--nes_batch", type = int, default = 9)
 
     # Save path
-    parser.add_argument("--log_path", type = str, default = "./log/Xception_attack.log")
+    parser.add_argument("--log_path", type = str, default = f"./log/{model_name}_attack.log")
 
     args = parser.parse_args()
 
