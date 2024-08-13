@@ -13,63 +13,72 @@ def evaluation(model, loader, mode, size, device, return_label=False):
 
     """
 
-    assert (mode is "SP") | (mode is "WSRT"), "Evaluaiton mode error."
+    assert (mode == "SP") | (mode == "WSRT"), "Evaluaiton mode error."
 
     pred_labels = []
     target_labels = []
-    labels_name = []
+    # labels_name = []
     prob_list = []
 
     model.eval()
+    info = '['+f"-"*15 + f"Starting Testing At {mode}" + "-"*15+']'
+    print(info)
     if mode == "SP":
 
         softmax = nn.Softmax(dim=1)
 
         with torch.no_grad():
-            for data, targets, label_name in tqdm(loader):
+            # for data, targets, label_name in tqdm(loader):
+            for data, targets in tqdm(loader):
                 
                 data = data.view(-1, 3, size, size).to(device)
-                target = targets.view(-1)[0].cpu().tolist()
+                # target = targets.view(-1)[0].cpu().tolist()
 
                 outputs = softmax(model(data)).detach().cpu()
-                prob = torch.mean(outputs[:, 1]).item()
+                # prob = torch.mean(outputs[:, 1]).item()
                 preds = torch.argmax(outputs, dim=1).tolist()
 
-                #pred = 1 if (sum(preds) >= (len(preds) // 2)) else 0
-                pred = 1 if prob > 0.5 else 0
+                # pred = 1 if (sum(preds) >= (len(preds) // 2)) else 0
+                # pred = 1 if prob > 0.5 else 0
 
-                pred_labels.append(pred)
-                target_labels.append(target)
-                labels_name.append(label_name[0])
-                prob_list.append(prob)
+                pred_labels.append(preds)
+                target_labels.append(targets.tolist())
+                # labels_name.append(label_name[0])
+                prob_list.append(outputs[:, 1].tolist())
 
     else:
-        dis={"real_dis0":[], "fake_dis0":[], "real_dis1":[], "fake_dis1":[]}
+        dis = {"real_dis0":[], "fake_dis0":[], "real_dis1":[], "fake_dis1":[]}
         with torch.no_grad():
-            for data, targets, label_name in tqdm(loader):
-
+            # for data, targets, label_name in tqdm(loader):
+            for data, targets in tqdm(loader):
                 data = data.view(-1, 3, size, size).to(device)
-                target = targets.view(-1)[0].cpu().tolist()
+                # target = targets.view(-1)[0].cpu().tolist()
+                outputs = model(data)
+                samples_dim0 = outputs[:, 0].detach().cpu().tolist()
+                samples_dim1 = outputs[:, 1].detach().cpu().tolist()
 
-                samples = model(data)[:, 0].detach().cpu().tolist()
-                samples_dim1 = model(data)[:, 1].detach().cpu().tolist()
-
-                if target == 1:
-                    dis["fake_dis0"].extend(samples)
-                    dis["fake_dis1"].extend(samples_dim1)
-                else:
-                    dis["real_dis0"].extend(samples)
-                    dis["real_dis1"].extend(samples_dim1)
-
-                w, p = wilcoxon(samples, alternative='greater')
-
-                pred = 1 if p < 0.05 else 0
-            
-                pred_labels.append(pred)
-                target_labels.append(target)
-                labels_name.append(label_name[0])
-                prob_list.append(1 - p)
-
+                for i in range(len(samples_dim0)):
+                    target = targets[i]
+                    if target == 1:
+                        dis["fake_dis0"].append(samples_dim0[i])
+                        dis["fake_dis1"].append(samples_dim1[i])
+                    else:
+                        dis["real_dis0"].append(samples_dim0[i])
+                        dis["real_dis1"].append(samples_dim1[i])
+                    sr = samples_dim0[i]
+                    w, p = wilcoxon(len(samples_dim0) * [sr], alternative='greater')
+                    # where Mr represents the median of sr.
+                    # The null hypothesis will be rejected when the p-value is less than the significance level α
+                    pred = 1 if p < 0.05 else 0
+                
+                    pred_labels.append([pred])
+                    # labels_name.append(label_name[0])
+                    prob_list.append([1 - p])
+                target_labels.append(targets.tolist())
+    
+    pred_labels = [y for x in pred_labels for y in x]
+    target_labels = [y for x in target_labels for y in x]
+    prob_list = [y for x in prob_list for y in x]
     f1 = f1_score(target_labels, pred_labels, average='macro')
     accuracy = np.sum(np.array(target_labels) == np.array(pred_labels)) / len(target_labels)
     auc = roc_auc_score(target_labels, prob_list)
@@ -90,7 +99,7 @@ def evaluation_PGD(model, loader, mode, size, device, attacker, nes_batch=10, ne
               WSRT (Wilcoxon signed-rank test).
 
     """
-    assert (mode is "SP") | (mode is "WSRT"), "Evaluaiton mode error."
+    assert (mode == "SP") | (mode == "WSRT"), "Evaluaiton mode error."
 
     pred_labels = []
     target_labels = []
