@@ -110,11 +110,11 @@ def evaluation_PGD(model, loader, mode, size, device, attacker, nes_batch=10, ne
 
         softmax = nn.Softmax(dim=1)
 
-        for data, targets, label_name in tqdm(loader):
-        
+        # for data, targets, label_name in tqdm(loader):
+        for data, targets in tqdm(loader):
             data = data.view(-1, 3, size, size).to(device)
             targets = targets.view(-1).to(device)
-            target = targets.view(-1)[0].cpu().tolist()
+            # target = targets.view(-1)[0].cpu().tolist()
 
             if black:
                 images = attacker.nes_attack(model, data, targets)
@@ -123,19 +123,19 @@ def evaluation_PGD(model, loader, mode, size, device, attacker, nes_batch=10, ne
 
             outputs = softmax(model(images)).detach().cpu()
 
-            prob = torch.mean(outputs[:, 1]).item()
+            # prob = torch.mean(outputs[:, 1]).item()
             preds = torch.argmax(outputs, dim=1).tolist()
 
-           # pred = 1 if (sum(preds) >= (len(preds) // 2)) else 0
-            pred = 1 if prob > 0.5 else 0
+            # pred = 1 if (sum(preds) >= (len(preds) // 2)) else 0
+            # pred = 1 if prob > 0.5 else 0
 
-            pred_labels.append(pred)
-            target_labels.append(target)
-            prob_list.append(prob)
+            pred_labels.append(preds)
+            target_labels.append(targets.tolist())
+            prob_list.append(outputs[:, 1].tolist())
     
     else:
-        for data, targets, label_name in tqdm(loader):
-
+        # for data, targets, label_name in tqdm(loader):
+        for data, targets in tqdm(loader):
             data = data.view(-1, 3, size, size).to(device)
             targets = targets.view(-1).to(device)
 
@@ -144,18 +144,24 @@ def evaluation_PGD(model, loader, mode, size, device, attacker, nes_batch=10, ne
             else:
                 images = attacker.attack(model, data, targets)
 
-            target = targets.view(-1)[0].cpu().tolist()
+            # target = targets.view(-1)[0].cpu().tolist()
 
             samples = model(images)[:, 0].cpu().tolist()
-            w, p = wilcoxon(samples, alternative='greater')
+            for i in range(len(samples)):
+                target = targets[i]
+                sr = samples[i]
+                w, p = wilcoxon(len(samples) * [sr], alternative='greater')
+                pred = 1 if p < 0.05 else 0
 
-            pred = 1 if p < 0.05 else 0
-        
-            pred_labels.append(pred)
-            target_labels.append(target)
-            prob_list.append(1 - p)
+                pred_labels.append([pred])
+                prob_list.append([1 - p])
 
-    
+            target_labels.append(targets.tolist())
+
+    pred_labels = [y for x in pred_labels for y in x]
+    target_labels = [y for x in target_labels for y in x]
+    prob_list = [y for x in prob_list for y in x]
+
     f1 = f1_score(target_labels, pred_labels, average='macro')
     accuracy = np.sum(np.array(target_labels) == np.array(pred_labels)) / len(target_labels)
     auc = roc_auc_score(target_labels, prob_list)
