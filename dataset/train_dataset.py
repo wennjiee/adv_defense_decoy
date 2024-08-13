@@ -62,7 +62,7 @@ class TrainFaceForensics(Dataset):
                 fake_img[count] = img[:]
                 count += 1
         
-        all_img = torch.cat((true_img,fake_img))
+        all_img = torch.cat((true_img, fake_img))
 
         labels = torch.cat((torch.zeros(self.img_batch, 1), torch.ones(self.img_batch, 1))).type(torch.LongTensor)
         
